@@ -2,7 +2,7 @@ CC = gcc
 SRC = main.c editor.c parse.c
 IDIR = ../headers
 CFLAGS = -I$(IDIR)
-TARGET = Konsolatnik
+TARGET = winapi_test
 TARG_DIR = ../$(TARGET)
 
 # $@ stands for exec or target name

@@ -31,56 +31,35 @@ ActionType resolve(const char* input) {
 }
 
 void action_manager(ActionType actionGiven, const char* input) {
-    switch (actionGiven) {
-        case ACTION_ERROR:
-            printf("Unknown command\n");
-        //todo
-        break;
-        case ACTION_NEW_FILE:
-            {
-            //char* p_contentBuffer = malloc(sizeof(char)*TEXT_BUFFER_SIZE_BYTES);
-            char p_contentBuffer[TEXT_BUFFER_SIZE_BYTES];
-
-            if (p_contentBuffer == NULL) exit(-2);
-
-            *p_contentBuffer = '\0';
-
-            char* filenameWithExtension = input_to_filename(input, EXTENSION);
-            run_editor(filenameWithExtension, p_contentBuffer, TEXT_BUFFER_SIZE_BYTES);
-            save_to_file(filenameWithExtension, p_contentBuffer);
-
-            free(filenameWithExtension);
-            //free(p_contentBuffer);
-            }
-        break;
-        case ACTION_OPEN_FILE:
-            {
-            //char* p_contentBuffer = malloc(sizeof(char)*TEXT_BUFFER_SIZE_BYTES);
-            char p_contentBuffer[TEXT_BUFFER_SIZE_BYTES];
-            if (p_contentBuffer == NULL) exit(-2);
-
-            *p_contentBuffer = '\0';
-            char* filenameWithExtension = input_to_filename(input, EXTENSION);
-
-            load_file_content_to_buffer(filenameWithExtension, p_contentBuffer, TEXT_BUFFER_SIZE_BYTES);
-            run_editor(filenameWithExtension, p_contentBuffer, TEXT_BUFFER_SIZE_BYTES);
-            save_to_file(filenameWithExtension, p_contentBuffer);
-            
-            //free(p_contentBuffer);
-            free(filenameWithExtension);
-            }
-        break;
-        case ACTION_LIST:
-        list_files_in_directory();
-        break;
-        case ACTION_MOVE_DIR_UP:
-        break;
-        case ACTION_MOVE_DIR_DOWN:
-        break;
-        case ACTION_EXIT:
+    if (actionGiven == ACTION_ERROR) {
+        printf("Unknown command\n");
+    }
+    else if (actionGiven == ACTION_NEW_FILE || actionGiven == ACTION_OPEN_FILE)
+    {
+        /* code */
+        char textEditorCharBuffer[TEXT_BUFFER_SIZE_BYTES];
+        run_editor("fname", textEditorCharBuffer, TEXT_BUFFER_SIZE_BYTES);
+        
+    }
+    else if (actionGiven == ACTION_OPEN_FILE)
+    {
+        /* code */
+    }
+    else if (actionGiven == ACTION_LIST)
+    {
+        /* code */
+    }
+    else if (actionGiven == ACTION_MOVE_DIR_DOWN)
+    {
+        /* code */
+    }
+    else if (actionGiven == ACTION_MOVE_DIR_UP)
+    {
+        /* code */
+    }
+    else if (actionGiven == ACTION_EXIT)
+    {
         exit(0);
-        break;
-        default:
     }
 }
 
@@ -101,16 +80,6 @@ uint8 list_files_in_directory(void) {
         }
     }
     printf("\n");
-}
-
-uint8 count_input_length(const char* input) {
-    //does not include the null character
-    if (input == NULL) return -1;
-    uint8 len = 0;
-    while (*input++ != '\0') {
-        len++;
-    }
-    return len;
 }
 
 uint8 extract_filename_from_input(const char* input, uint8 input_len, char* returnString) {

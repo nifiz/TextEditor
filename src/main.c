@@ -1,5 +1,5 @@
-#include "parse.h"
-#include "editor.h"
+#include "../headers/parse.h"
+#include "../headers/editor.h"
 #include <stdio.h>
 
 int main(void) {
