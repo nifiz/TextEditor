@@ -41,7 +41,7 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
     //initalize stuff
 
     uint8 displayWidth = w_get_display_width();
-    uint8 displayHeight = 50;
+    uint8 displayHeight = w_get_display_height();
 
     COORD consoleWindowSize = {displayWidth, displayHeight};
     CHAR_INFO characterConsoleWindowBuffer[consoleWindowSize.X * consoleWindowSize.Y];
@@ -62,7 +62,7 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
     }
 
     for (uint32 i = displayWidth; i < displayWidth*displayHeight; i++) {
-        characterConsoleWindowBuffer[i].Char.AsciiChar = ' ';
+        characterConsoleWindowBuffer[i].Char.AsciiChar = 0x0;
         characterConsoleWindowBuffer[i].Attributes = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED;
     }
 
@@ -107,7 +107,6 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
         
         unsigned char keyPressed = _getch();
 
-
         switch (keyPressed) {
             case 24: //CTRL+X - Exit
                 running = FALSE;
@@ -115,8 +114,14 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
                 return;
                 break;
             case 8: //BACKSPACE
-                content_remove_character(characterConsoleWindowBuffer + (cursorPosition.Y)*displayWidth + cursorPosition.X-1);
+                //content_remove_character(characterConsoleWindowBuffer + (cursorPosition.Y)*displayWidth + cursorPosition.X-1);
                 move_cursor(ARR_LEFT, &cursorPosition, consoleWindowSize);
+                remove_character(characterConsoleWindowBuffer, consoleWindowSize, cursorPosition);
+                break;
+            case 13: // ENTER key
+                
+                move_cursor(ARR_DOWN, &cursorPosition, consoleWindowSize);
+                move_cursor(LINE_BEGIN, &cursorPosition, consoleWindowSize);
                 break;
             case 19: //CTRL+S - Save
                 break;
@@ -126,7 +131,8 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
             default:
                 //printf("CODE: %d, CHAR: %c", keyPressed, keyPressed);
                 if (!arrKeyWasPressed) {
-                    content_append_character(characterConsoleWindowBuffer + (cursorPosition.Y)*displayWidth + cursorPosition.X, keyPressed);
+                    //content_append_character(characterConsoleWindowBuffer + (cursorPosition.Y)*displayWidth + cursorPosition.X, keyPressed);
+                    insert_character(characterConsoleWindowBuffer, consoleWindowSize, cursorPosition, keyPressed);
                     move_cursor(ARR_RIGHT, &cursorPosition, consoleWindowSize);
                 }
                 else { //arr key was pressed!
@@ -160,6 +166,55 @@ void content_remove_character(CHAR_INFO* const p_CharToDelete) {
     //p_CharToDelete->Char.UnicodeChar = '\0';
     return;
 }
+
+void insert_character(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD cursorPosition, const char CHAR_TO_INSERT) {
+    
+    uint16 buffLimit = sizeOfBuffer.X * sizeOfBuffer.Y;
+    uint16 positionIndex = cursorPosition.Y * sizeOfBuffer.X + cursorPosition.X;
+
+    char pickUp = (p_buffer+positionIndex)->Char.AsciiChar;
+    char putDown;
+    (p_buffer+positionIndex)->Char.AsciiChar = CHAR_TO_INSERT;
+
+    while (pickUp != '\0' || positionIndex + cursorPosition.Y * sizeOfBuffer.X + cursorPosition.X < buffLimit) {
+
+        //printf("psidx: %d\n", positionIndex);
+
+        putDown = pickUp;
+
+        positionIndex++;
+
+        pickUp = (p_buffer+positionIndex)->Char.AsciiChar;
+
+        (p_buffer+positionIndex)->Char.AsciiChar = putDown;
+
+    }
+
+    (p_buffer+positionIndex+1)->Char.AsciiChar = '\0';
+
+}
+
+void remove_character(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD cursorPosition) {
+
+    uint16 buffLimit = sizeOfBuffer.X * sizeOfBuffer.Y;
+    uint16 positionIndex = cursorPosition.Y * sizeOfBuffer.X + cursorPosition.X;
+
+    char nextOne = (p_buffer+positionIndex+1)->Char.AsciiChar;
+
+    while (nextOne != '\0' || positionIndex + cursorPosition.Y * sizeOfBuffer.X + cursorPosition.X < buffLimit) {
+        
+        (p_buffer+positionIndex)->Char.AsciiChar = nextOne;
+        positionIndex++;
+        nextOne = (p_buffer+positionIndex+1)->Char.AsciiChar;
+
+    }
+
+    (p_buffer+positionIndex)->Char.AsciiChar = nextOne;
+
+    return;
+}
+
+void move_character_newline()
 
 void print_top_bar_to_screen(const char* filename, const uint32 wordCount, unsigned char isEdited) {
     uint8 screenWidth = w_get_display_width();
@@ -243,20 +298,24 @@ void move_cursor(KEY_ARROW key, COORD* cursor, const COORD SCREEN_SIZE) {
     //we can increase cursor position beyond whats possible to display and draw currently
     //implement it in the future
 
-    const int MAX_AVAILABLE_ROW = 1;
-    const int MAX_AVAILABLE_COLUMN = 0;
+    const int MIN_AVAILABLE_ROW = 0;
+    const int MIN_AVAILABLE_COLUMN = 0;
+
+    int maxAvailableRow = SCREEN_SIZE.Y;
+    int maxAvailableColumn = SCREEN_SIZE.X;
+
 
     switch (key)
     {
     case ARR_UP:
-        if (cursor->Y > MAX_AVAILABLE_ROW) cursor->Y--;
+        if (cursor->Y > MIN_AVAILABLE_ROW) cursor->Y--;
         break;
     case ARR_DOWN:
         cursor->Y++;
         break;
     case ARR_LEFT:
-        if (cursor->X > MAX_AVAILABLE_COLUMN) cursor->X--;
-        else if (cursor->X == MAX_AVAILABLE_COLUMN && cursor->Y > 0) //we can go back up and to the end of line above
+        if (cursor->X > MIN_AVAILABLE_COLUMN) cursor->X--;
+        else if (cursor->X == MIN_AVAILABLE_COLUMN && cursor->Y > 0) //we can go back up and to the end of line above
         {
             cursor->X = SCREEN_SIZE.X - 1;
             cursor->Y--;
@@ -272,6 +331,11 @@ void move_cursor(KEY_ARROW key, COORD* cursor, const COORD SCREEN_SIZE) {
             cursor->X++;
         }
         break;
+    case LINE_BEGIN:
+        cursor->X = MIN_AVAILABLE_COLUMN;
+        break;
+    case LINE_END:
+        cursor->X = maxAvailableColumn-1;
     default:
         break;
     }
