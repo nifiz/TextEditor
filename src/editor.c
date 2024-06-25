@@ -24,7 +24,6 @@ void clear_screen(void) {
     if (!FillConsoleOutputCharacter(hConsole, (TCHAR) ' ', cellCount, homeCoords, &count)) return;
 
     if (!FillConsoleOutputAttribute(hConsole, csbi.wAttributes, cellCount, homeCoords, &count)) return;
-
     SetConsoleCursorPosition(hConsole, homeCoords);
 
     return;
@@ -47,7 +46,7 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
     CHAR_INFO characterConsoleWindowBuffer[consoleWindowSize.X * consoleWindowSize.Y];
 
     uint8 fnameLength = strlen(fname);
-    const char FILLER = '-';
+    const char FILLER = 10;
 
     uint8 fillerCharsCount = displayWidth - 55 - fnameLength;
     if (fillerCharsCount % 2 != 0) fillerCharsCount--;  //make it even
@@ -92,14 +91,10 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
     uint8 FRAMES = 60;      //temporary solution
     char isEdited = '*';    //temporary solution
 
-    //print_to_screen(fname, p_buffer, 0, FRAMES, isEdited);
-
     SMALL_RECT screenRect = {0,0,displayWidth-1,displayHeight-1};
 
-    //WriteConsoleOutputA(hStdout, characterConsoleWindowBuffer, consoleWindowSize, homeCoords, &screenRect);
     clear_screen();
     WriteConsoleOutputA(hStdout, characterConsoleWindowBuffer, consoleWindowSize, homeCoords, &screenRect);
-
 
     while(running) {
 
@@ -119,11 +114,17 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
                 remove_character(characterConsoleWindowBuffer, consoleWindowSize, cursorPosition);
                 break;
             case 13: // ENTER key
-                
+                move_character_newline(characterConsoleWindowBuffer, consoleWindowSize, cursorPosition, ' ');
                 move_cursor(ARR_DOWN, &cursorPosition, consoleWindowSize);
                 move_cursor(LINE_BEGIN, &cursorPosition, consoleWindowSize);
                 break;
             case 19: //CTRL+S - Save
+                break;
+            case 71: //HOME key - move cursor to the beginning of the current row
+                move_cursor(LINE_BEGIN, &cursorPosition, consoleWindowSize);
+                break;
+            case 79: //END key - move cursor to the end of the current row
+                move_cursor(LINE_END, &cursorPosition, consoleWindowSize);
                 break;
             case 224: //arrow key detected
                 arrKeyWasPressed = TRUE;
@@ -145,8 +146,7 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
         //print_to_screen(fname, p_buffer, sizeOfReceivedBuffer, FRAMES, isEdited);
 
         WriteConsoleOutputA(hStdout, characterConsoleWindowBuffer, consoleWindowSize, homeCoords, &screenRect);
-
-        //printf("\ncode %d\n", keyPressed);
+        printf("\nW: %d\n", consoleWindowSize.X);
         //printf("CX %d: CY: %d\n", cursorPosition.X, cursorPosition.Y);
         SetConsoleCursorPosition(hStdout, cursorPosition);
     }
@@ -172,6 +172,10 @@ void insert_character(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD curso
     uint16 buffLimit = sizeOfBuffer.X * sizeOfBuffer.Y;
     uint16 positionIndex = cursorPosition.Y * sizeOfBuffer.X + cursorPosition.X;
 
+    //if we'd go over the buffer - increase it's size
+
+    //resize_console_screen_buffer((COORD){sizeOfBuffer.X + 1, sizeOfBuffer.Y});
+
     char pickUp = (p_buffer+positionIndex)->Char.AsciiChar;
     char putDown;
     (p_buffer+positionIndex)->Char.AsciiChar = CHAR_TO_INSERT;
@@ -194,6 +198,11 @@ void insert_character(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD curso
 
 }
 
+BOOL resize_console_screen_buffer(const COORD NEW_SIZE) {
+    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+    return SetConsoleScreenBufferSize(hStdout, NEW_SIZE);
+}
+
 void remove_character(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD cursorPosition) {
 
     uint16 buffLimit = sizeOfBuffer.X * sizeOfBuffer.Y;
@@ -214,7 +223,15 @@ void remove_character(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD curso
     return;
 }
 
-void move_character_newline()
+void move_character_newline(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD cursorPosition, const char CHAR_TO_INSERT) {
+    //buggy, characters start to disappear after a few enter presses - why? 
+    uint8 columnsLeftInCurrentLine = sizeOfBuffer.X - (cursorPosition.X + 1);
+
+    for (int i = 0; i <= columnsLeftInCurrentLine; i++) {
+        insert_character(p_buffer, sizeOfBuffer, cursorPosition, CHAR_TO_INSERT);
+        cursorPosition.X += 1;
+    }
+}
 
 void print_top_bar_to_screen(const char* filename, const uint32 wordCount, unsigned char isEdited) {
     uint8 screenWidth = w_get_display_width();
