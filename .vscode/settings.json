@@ -1,6 +1,7 @@
 {
     "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
+        "editor.h": "c",
         "parse.h": "c",
         "windows.h": "c"
     }

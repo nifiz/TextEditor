@@ -33,8 +33,6 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
 
     clear_screen();
 
-    char keyPressed;
-
     p_buffer = "ciota i chuj pozdro";
 
     //initalize stuff
@@ -43,7 +41,7 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
     uint8 displayHeight = w_get_display_height();
 
     COORD consoleWindowSize = {displayWidth, displayHeight};
-    CHAR_INFO characterConsoleWindowBuffer[consoleWindowSize.X * consoleWindowSize.Y];
+    CHAR_INFO characterConsoleWindowBuffer[consoleWindowSize.X * consoleWindowSize.Y]; //does NOT support increasing window size
 
     uint8 fnameLength = strlen(fname);
     const char FILLER = 10;
@@ -96,35 +94,32 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
     clear_screen();
     WriteConsoleOutputA(hStdout, characterConsoleWindowBuffer, consoleWindowSize, homeCoords, &screenRect);
 
+    unsigned char keyPressed;
+
     while(running) {
 
         Sleep(FRAME_TIME_MILISECONDS);
         
-        unsigned char keyPressed = _getch();
+        keyPressed = _getch();
 
         switch (keyPressed) {
-            case 24: //CTRL+X - Exit
-                running = FALSE;
-                clear_screen();
-                return;
-                break;
             case 8: //BACKSPACE
                 //content_remove_character(characterConsoleWindowBuffer + (cursorPosition.Y)*displayWidth + cursorPosition.X-1);
                 move_cursor(ARR_LEFT, &cursorPosition, consoleWindowSize);
                 remove_character(characterConsoleWindowBuffer, consoleWindowSize, cursorPosition);
+                //cursor_alt_mode_toggle();
                 break;
             case 13: // ENTER key
                 move_character_newline(characterConsoleWindowBuffer, consoleWindowSize, cursorPosition, ' ');
-                move_cursor(ARR_DOWN, &cursorPosition, consoleWindowSize);
                 move_cursor(LINE_BEGIN, &cursorPosition, consoleWindowSize);
+                move_cursor(ARR_DOWN, &cursorPosition, consoleWindowSize);
                 break;
             case 19: //CTRL+S - Save
                 break;
-            case 71: //HOME key - move cursor to the beginning of the current row
-                move_cursor(LINE_BEGIN, &cursorPosition, consoleWindowSize);
-                break;
-            case 79: //END key - move cursor to the end of the current row
-                move_cursor(LINE_END, &cursorPosition, consoleWindowSize);
+            case 24: //CTRL+X - Exit
+                running = FALSE;
+                clear_screen();
+                return;
                 break;
             case 224: //arrow key detected
                 arrKeyWasPressed = TRUE;
@@ -137,33 +132,17 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
                     move_cursor(ARR_RIGHT, &cursorPosition, consoleWindowSize);
                 }
                 else { //arr key was pressed!
-                    
                     move_cursor((KEY_ARROW)keyPressed, &cursorPosition, consoleWindowSize);
                     arrKeyWasPressed = FALSE;
                 }
         }
-        //clear_screen();
-        //print_to_screen(fname, p_buffer, sizeOfReceivedBuffer, FRAMES, isEdited);
-
+        //extend the screen if needed
+        adjust_screen_buffer_size(cursorPosition, &consoleWindowSize);
         WriteConsoleOutputA(hStdout, characterConsoleWindowBuffer, consoleWindowSize, homeCoords, &screenRect);
-        printf("\nW: %d\n", consoleWindowSize.X);
-        //printf("CX %d: CY: %d\n", cursorPosition.X, cursorPosition.Y);
         SetConsoleCursorPosition(hStdout, cursorPosition);
+        //printf("  C.X: %d, C.Y: %d", cursorPosition.X, cursorPosition.Y);
     }
 
-    return;
-}
-
-void content_append_character(CHAR_INFO* const p_buffer, char character) {
-    //does NOT check for p_buffer overlow yet!
-    p_buffer->Char.AsciiChar = character;
-    //(p_buffer+1)->Char.AsciiChar = 0x0;
-    return;
-}
-
-void content_remove_character(CHAR_INFO* const p_CharToDelete) {
-    p_CharToDelete->Char.AsciiChar = 0x0;
-    //p_CharToDelete->Char.UnicodeChar = '\0';
     return;
 }
 
@@ -198,11 +177,6 @@ void insert_character(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD curso
 
 }
 
-BOOL resize_console_screen_buffer(const COORD NEW_SIZE) {
-    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-    return SetConsoleScreenBufferSize(hStdout, NEW_SIZE);
-}
-
 void remove_character(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD cursorPosition) {
 
     uint16 buffLimit = sizeOfBuffer.X * sizeOfBuffer.Y;
@@ -225,9 +199,9 @@ void remove_character(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD curso
 
 void move_character_newline(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD cursorPosition, const char CHAR_TO_INSERT) {
     //buggy, characters start to disappear after a few enter presses - why? 
-    uint8 columnsLeftInCurrentLine = sizeOfBuffer.X - (cursorPosition.X + 1);
+    uint8 columnsLeftInCurrentLine = sizeOfBuffer.X - cursorPosition.X ;
 
-    for (int i = 0; i <= columnsLeftInCurrentLine; i++) {
+    for (int i = 0; i < columnsLeftInCurrentLine; i++) {
         insert_character(p_buffer, sizeOfBuffer, cursorPosition, CHAR_TO_INSERT);
         cursorPosition.X += 1;
     }
@@ -356,6 +330,17 @@ void move_cursor(KEY_ARROW key, COORD* cursor, const COORD SCREEN_SIZE) {
     default:
         break;
     }
+}
+
+void adjust_screen_buffer_size(COORD cursorPosition, COORD* currentScrBuffSize) {
+
+    if (cursorPosition.Y > currentScrBuffSize->Y - 1) { //screenBufferSize is NOT 0-indexed
+    currentScrBuffSize->Y++;
+    }
+    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleScreenBufferSize(hStdout, *currentScrBuffSize);
+
+    return;
 }
 
 
