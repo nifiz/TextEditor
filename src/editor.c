@@ -1,5 +1,6 @@
 #include "../headers/editor.h"
 #include "../headers/parse.h"
+#include "../headers/char_operations.h"
 #include <conio.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,7 +34,7 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
 
     clear_screen();
 
-    p_buffer = "ciota i chuj pozdro";
+    p_buffer = "WHY IS IT EVEN THERE NIGGAAAAAAAAAAAAAA";
 
     //initalize stuff
 
@@ -41,25 +42,30 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
     uint8 displayHeight = w_get_display_height();
 
     COORD consoleWindowSize = {displayWidth, displayHeight};
-    CHAR_INFO characterConsoleWindowBuffer[consoleWindowSize.X * consoleWindowSize.Y]; //does NOT support increasing window size
+    CHAR_INFO characterConsoleWindowBuffer[ consoleWindowSize.X * consoleWindowSize.Y]; //does NOT support increasing window size
 
     uint8 fnameLength = strlen(fname);
-    const char FILLER = 10;
+    const char FILLER = ' ';
+
+    uint16* pArr_lastCharPosition = (uint16*)calloc(consoleWindowSize.Y, sizeof(uint16)); //initialized with 0's
+
+    
 
     uint8 fillerCharsCount = displayWidth - 55 - fnameLength;
     if (fillerCharsCount % 2 != 0) fillerCharsCount--;  //make it even
 
     for (uint8 i = 0; i < displayWidth; i++) {
         characterConsoleWindowBuffer[i].Char.AsciiChar = FILLER;
-        characterConsoleWindowBuffer[i].Attributes = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED;
-    }
-
-    for (uint8 i = fillerCharsCount/2; i < displayWidth - fillerCharsCount/2; i++) {
-        characterConsoleWindowBuffer[i].Char.AsciiChar = DEBUG_HEADER[i];
+        characterConsoleWindowBuffer[i].Attributes = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED | BACKGROUND_BLUE;
     }
 
     for (uint32 i = displayWidth; i < displayWidth*displayHeight; i++) {
-        characterConsoleWindowBuffer[i].Char.AsciiChar = 0x0;
+        characterConsoleWindowBuffer[i].Char.AsciiChar = FILLER;
+        characterConsoleWindowBuffer[i].Attributes = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED;
+    }
+
+    for (uint32 i = displayWidth*15; i < displayWidth*16; i++) {
+        characterConsoleWindowBuffer[i].Char.AsciiChar = FILLER;
         characterConsoleWindowBuffer[i].Attributes = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED;
     }
 
@@ -82,12 +88,9 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
     DWORD cellCount;
     COORD homeCoords = {0, 0};
 
-
     uint8 FRAME_TIME_MILISECONDS = 17;
 
     BOOL arrKeyWasPressed = FALSE;
-    uint8 FRAMES = 60;      //temporary solution
-    char isEdited = '*';    //temporary solution
 
     SMALL_RECT screenRect = {0,0,displayWidth-1,displayHeight-1};
 
@@ -103,16 +106,15 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
         keyPressed = _getch();
 
         switch (keyPressed) {
+
             case 8: //BACKSPACE
-                //content_remove_character(characterConsoleWindowBuffer + (cursorPosition.Y)*displayWidth + cursorPosition.X-1);
-                move_cursor(ARR_LEFT, &cursorPosition, consoleWindowSize);
+                move_cursor(ARR_LEFT, &cursorPosition, consoleWindowSize, consoleWindowSize.X);
                 remove_character(characterConsoleWindowBuffer, consoleWindowSize, cursorPosition);
-                //cursor_alt_mode_toggle();
                 break;
             case 13: // ENTER key
                 move_character_newline(characterConsoleWindowBuffer, consoleWindowSize, cursorPosition, ' ');
-                move_cursor(LINE_BEGIN, &cursorPosition, consoleWindowSize);
-                move_cursor(ARR_DOWN, &cursorPosition, consoleWindowSize);
+                move_cursor(LINE_BEGIN, &cursorPosition, consoleWindowSize, consoleWindowSize.X);
+                move_cursor(ARR_DOWN, &cursorPosition, consoleWindowSize, consoleWindowSize.X);
                 break;
             case 19: //CTRL+S - Save
                 break;
@@ -129,19 +131,24 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
                 if (!arrKeyWasPressed) {
                     //content_append_character(characterConsoleWindowBuffer + (cursorPosition.Y)*displayWidth + cursorPosition.X, keyPressed);
                     insert_character(characterConsoleWindowBuffer, consoleWindowSize, cursorPosition, keyPressed);
-                    move_cursor(ARR_RIGHT, &cursorPosition, consoleWindowSize);
+                    move_cursor(ARR_RIGHT, &cursorPosition, consoleWindowSize, consoleWindowSize.X);
                 }
-                else { //arr key was pressed!
-                    move_cursor((KEY_ARROW)keyPressed, &cursorPosition, consoleWindowSize);
+                else { //ARR or END/HOME key was pressed!
+                    uint32 maxAvailableColumn = last_character_in_string_CHARINFO(&characterConsoleWindowBuffer[cursorPosition.Y*consoleWindowSize.X], 
+                                                                                  consoleWindowSize.X, 
+                                                                                  FILLER);
+                    move_cursor((KEY_ARROW)keyPressed, &cursorPosition, consoleWindowSize, maxAvailableColumn);
                     arrKeyWasPressed = FALSE;
                 }
         }
+
         //extend the screen if needed
-        adjust_screen_buffer_size(cursorPosition, &consoleWindowSize);
         WriteConsoleOutputA(hStdout, characterConsoleWindowBuffer, consoleWindowSize, homeCoords, &screenRect);
         SetConsoleCursorPosition(hStdout, cursorPosition);
         //printf("  C.X: %d, C.Y: %d", cursorPosition.X, cursorPosition.Y);
     }
+
+    free(pArr_lastCharPosition);
 
     return;
 }
@@ -151,15 +158,11 @@ void insert_character(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD curso
     uint16 buffLimit = sizeOfBuffer.X * sizeOfBuffer.Y;
     uint16 positionIndex = cursorPosition.Y * sizeOfBuffer.X + cursorPosition.X;
 
-    //if we'd go over the buffer - increase it's size
-
-    //resize_console_screen_buffer((COORD){sizeOfBuffer.X + 1, sizeOfBuffer.Y});
-
     char pickUp = (p_buffer+positionIndex)->Char.AsciiChar;
     char putDown;
     (p_buffer+positionIndex)->Char.AsciiChar = CHAR_TO_INSERT;
 
-    while (pickUp != '\0' || positionIndex + cursorPosition.Y * sizeOfBuffer.X + cursorPosition.X < buffLimit) {
+    while (pickUp != '\0' && positionIndex < buffLimit) {
 
         //printf("psidx: %d\n", positionIndex);
 
@@ -173,7 +176,7 @@ void insert_character(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD curso
 
     }
 
-    (p_buffer+positionIndex+1)->Char.AsciiChar = '\0';
+    //(p_buffer+positionIndex+1)->Char.AsciiChar = '\0';
 
 }
 
@@ -181,10 +184,9 @@ void remove_character(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD curso
 
     uint16 buffLimit = sizeOfBuffer.X * sizeOfBuffer.Y;
     uint16 positionIndex = cursorPosition.Y * sizeOfBuffer.X + cursorPosition.X;
-
     char nextOne = (p_buffer+positionIndex+1)->Char.AsciiChar;
 
-    while (nextOne != '\0' || positionIndex + cursorPosition.Y * sizeOfBuffer.X + cursorPosition.X < buffLimit) {
+    while (nextOne != '\0' && positionIndex + cursorPosition.Y * sizeOfBuffer.X + cursorPosition.X < buffLimit) {
         
         (p_buffer+positionIndex)->Char.AsciiChar = nextOne;
         positionIndex++;
@@ -205,41 +207,6 @@ void move_character_newline(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD
         insert_character(p_buffer, sizeOfBuffer, cursorPosition, CHAR_TO_INSERT);
         cursorPosition.X += 1;
     }
-}
-
-void print_top_bar_to_screen(const char* filename, const uint32 wordCount, unsigned char isEdited) {
-    uint8 screenWidth = w_get_display_width();
-
-    printf("%s%c%s :: Chars: %d\n", filename, isEdited, DEBUG_HEADER, wordCount);
-}
-
-void print_to_screen(char* filename, const char* const p_buffer, const uint32 wordCount, const uint8 FRAMES, char isEdited) {
-
-    print_top_bar_to_screen(filename, wordCount, isEdited);
-
-    // for(uint8 i = 0; i < screenWidth; i++) {
-    //     printf("^");
-    // }
-    // printf("\n");
-
-    char currentCharacter;
-    uint8 stop = 0;
-    for (uint32 i = 0; stop != 1 ;i++) {
-
-        currentCharacter = *(p_buffer+i);
-
-        switch (currentCharacter) {
-            case '\0':
-                stop = 1;
-                break;
-            case '\r': //enter
-                printf("\n");
-            default:
-                printf("%c", currentCharacter);
-        }
-
-    }
-    
 }
 
 uint8 w_get_display_width(void) {
@@ -269,7 +236,7 @@ COORD initCursorPos(const char* p_buffer, COORD ScreenBufferDims) {
 
     for (size_t row = 0; row < ScreenBufferDims.Y; row++) {
         for (size_t col = 0; col < ScreenBufferDims.X; col++) {
-            currentChar = p_buffer[row*ScreenBufferDims.X + col];
+            currentChar = p_buffer[row * ScreenBufferDims.X + col];
             if (currentChar == '\0') return cursorPos;
             if (currentChar == '\r') {
                 cursorPos.Y++;
@@ -282,19 +249,18 @@ COORD initCursorPos(const char* p_buffer, COORD ScreenBufferDims) {
     }
 
     //never found the NULL char
+
 }
 
-void move_cursor(KEY_ARROW key, COORD* cursor, const COORD SCREEN_SIZE) {
+void move_cursor(KEY_ARROW key, COORD* cursor, const COORD SCREEN_SIZE, const uint32 MAX_ALLOWED_COLUMN) {
+
     //TODO: 
-    //we can increase cursor position beyond whats possible to display and draw currently
-    //implement it in the future
+    //Currently cursor can go out of buffer/screen boundaries
+    //implement keeping it within in the future
 
     const int MIN_AVAILABLE_ROW = 0;
     const int MIN_AVAILABLE_COLUMN = 0;
-
-    int maxAvailableRow = SCREEN_SIZE.Y;
-    int maxAvailableColumn = SCREEN_SIZE.X;
-
+    int maxAvailableColumn = MAX_ALLOWED_COLUMN;
 
     switch (key)
     {
@@ -314,7 +280,12 @@ void move_cursor(KEY_ARROW key, COORD* cursor, const COORD SCREEN_SIZE) {
         
         break;
     case ARR_RIGHT:
-        if (cursor->X+1 > SCREEN_SIZE.X - 1) { //overflow
+        if (SCREEN_SIZE.X != MAX_ALLOWED_COLUMN) { //value mismatch - user just pressed an arrow key, stop cursor from going into whitespaces behind text
+            if (cursor->X <= MAX_ALLOWED_COLUMN && cursor->X != 0) {
+                cursor->X++;
+            }
+        }
+        else if (cursor->X+1 > SCREEN_SIZE.X - 1) { //overflow while writing
             cursor->X = 0;
             cursor->Y += 1;
         }
@@ -326,21 +297,10 @@ void move_cursor(KEY_ARROW key, COORD* cursor, const COORD SCREEN_SIZE) {
         cursor->X = MIN_AVAILABLE_COLUMN;
         break;
     case LINE_END:
-        cursor->X = maxAvailableColumn-1;
+        if (maxAvailableColumn == 0) break;
+        cursor->X = maxAvailableColumn+1;
+        break;
     default:
         break;
     }
 }
-
-void adjust_screen_buffer_size(COORD cursorPosition, COORD* currentScrBuffSize) {
-
-    if (cursorPosition.Y > currentScrBuffSize->Y - 1) { //screenBufferSize is NOT 0-indexed
-    currentScrBuffSize->Y++;
-    }
-    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-    SetConsoleScreenBufferSize(hStdout, *currentScrBuffSize);
-
-    return;
-}
-
-

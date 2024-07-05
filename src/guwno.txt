@@ -1,1 +1,0 @@
-Co˜ sb tu mo¾emy napisa†, ale potrzebuj© jeszcze:1. Dziaˆania strzaˆek (g¢ra, d¢ˆ, prawo, lewo)2. Zaznaczanie z shiftem3. Przesuwanie kursora z CTRL albo Home i End4. Implementacja zapisywania czego˜tam
