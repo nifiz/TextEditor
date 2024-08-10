@@ -1,6 +1,7 @@
 #include "../headers/editor.h"
 #include "../headers/parse.h"
 #include "../headers/char_operations.h"
+#include "../headers/text_structure.h"
 #include <conio.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,7 +35,7 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
 
     clear_screen();
 
-    p_buffer = "WHY IS IT EVEN THERE NIGGAAAAAAAAAAAAAA";
+    p_buffer = "TEST TEST";
 
     //initalize stuff
 
@@ -42,15 +43,22 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
     uint8 displayHeight = w_get_display_height();
 
     COORD consoleWindowSize = {displayWidth, displayHeight};
-    CHAR_INFO characterConsoleWindowBuffer[ consoleWindowSize.X * consoleWindowSize.Y]; //does NOT support increasing window size
+    CHAR_INFO characterConsoleWindowBuffer[ consoleWindowSize.X * consoleWindowSize.Y];
 
     uint8 fnameLength = strlen(fname);
+
     const char FILLER = ' ';
 
-    uint16* pArr_lastCharPosition = (uint16*)calloc(consoleWindowSize.Y, sizeof(uint16)); //initialized with 0's
+    // calloc() initializes the memory with 0's
+    uint16* pArr_lastCharPosition = (uint16*)calloc(consoleWindowSize.Y, sizeof(uint16));
 
-    
+    // TEXT STRUCT INIT
+    textStructure editorTextStruct;
+    initTextStructureEmpty(&editorTextStruct, consoleWindowSize.Y);
+    // END OF TEXT STRUCT INIT
 
+
+    // INITALIZE THE SCREEEN
     uint8 fillerCharsCount = displayWidth - 55 - fnameLength;
     if (fillerCharsCount % 2 != 0) fillerCharsCount--;  //make it even
 
@@ -68,9 +76,15 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
         characterConsoleWindowBuffer[i].Char.AsciiChar = FILLER;
         characterConsoleWindowBuffer[i].Attributes = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED;
     }
+    
+    // END OF SCREEN INITIALIZATION
+
+    // ==============================================================================================================
+
+    // FIDDLING WITH WINDOWS.H STUFF
 
     BOOL running = TRUE;
-    uint32 sizeOfReceivedBuffer = strlen(p_buffer);
+    uint32 sizeOfReceivedBuffer = (uint32)strlen(p_buffer);
 
     HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
     HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -93,6 +107,10 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
     BOOL arrKeyWasPressed = FALSE;
 
     SMALL_RECT screenRect = {0,0,displayWidth-1,displayHeight-1};
+
+    // END OF WINDOWS.H SHANANIGANS
+
+    // ==============================================================================================================
 
     clear_screen();
     WriteConsoleOutputA(hStdout, characterConsoleWindowBuffer, consoleWindowSize, homeCoords, &screenRect);
@@ -126,10 +144,12 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
             case 224: //arrow key detected
                 arrKeyWasPressed = TRUE;
                 break;
+            
+            // Default: a character key was pressed
             default:
-                //printf("CODE: %d, CHAR: %c", keyPressed, keyPressed);
+                
                 if (!arrKeyWasPressed) {
-                    //content_append_character(characterConsoleWindowBuffer + (cursorPosition.Y)*displayWidth + cursorPosition.X, keyPressed);
+                    
                     insert_character(characterConsoleWindowBuffer, consoleWindowSize, cursorPosition, keyPressed);
                     move_cursor(ARR_RIGHT, &cursorPosition, consoleWindowSize, consoleWindowSize.X);
                 }
@@ -137,18 +157,19 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
                     uint32 maxAvailableColumn = last_character_in_string_CHARINFO(&characterConsoleWindowBuffer[cursorPosition.Y*consoleWindowSize.X], 
                                                                                   consoleWindowSize.X, 
                                                                                   FILLER);
+                    maxAvailableColumn = getLastCharInLine(&editorTextStruct, cursorPosition.Y);
                     move_cursor((KEY_ARROW)keyPressed, &cursorPosition, consoleWindowSize, maxAvailableColumn);
                     arrKeyWasPressed = FALSE;
                 }
         }
 
-        //extend the screen if needed
         WriteConsoleOutputA(hStdout, characterConsoleWindowBuffer, consoleWindowSize, homeCoords, &screenRect);
         SetConsoleCursorPosition(hStdout, cursorPosition);
-        //printf("  C.X: %d, C.Y: %d", cursorPosition.X, cursorPosition.Y);
     }
 
     free(pArr_lastCharPosition);
+
+    freeTextStructure(&editorTextStruct);
 
     return;
 }
@@ -162,6 +183,9 @@ void insert_character(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD curso
     char putDown;
     (p_buffer+positionIndex)->Char.AsciiChar = CHAR_TO_INSERT;
 
+
+    // TODO
+    // Can this be switched to memmove? It'd be great but I can't be bothered atm.
     while (pickUp != '\0' && positionIndex < buffLimit) {
 
         //printf("psidx: %d\n", positionIndex);
@@ -200,7 +224,7 @@ void remove_character(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD curso
 }
 
 void move_character_newline(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD cursorPosition, const char CHAR_TO_INSERT) {
-    //buggy, characters start to disappear after a few enter presses - why? 
+    
     uint8 columnsLeftInCurrentLine = sizeOfBuffer.X - cursorPosition.X ;
 
     for (int i = 0; i < columnsLeftInCurrentLine; i++) {
@@ -211,16 +235,20 @@ void move_character_newline(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD
 
 uint8 w_get_display_width(void) {
     CONSOLE_SCREEN_BUFFER_INFO csbi;
-    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) return (uint8)csbi.srWindow.Right - csbi.srWindow.Left + 1;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) return (uint8)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
     else return 0;
 }
 
 uint8 w_get_display_height(void) {
     CONSOLE_SCREEN_BUFFER_INFO csbi;
-    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) return (uint8)csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) return (uint8)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
     else return 0;
 }
 
+// TODO:
+// Currently this function is unfinished, I want it to put the cursor at the end of
+// text that has been loaded into the buffer on startup - usually when loading an exisiting
+// text file.
 COORD initCursorPos(const char* p_buffer, COORD ScreenBufferDims) {
 
     size_t charBufferSize = strlen(p_buffer);
@@ -228,11 +256,6 @@ COORD initCursorPos(const char* p_buffer, COORD ScreenBufferDims) {
     COORD cursorPos = {0,0};
 
     char currentChar;
-
-    //5x5
-    //something\rstupid
-    //somet
-    //hing
 
     for (size_t row = 0; row < ScreenBufferDims.Y; row++) {
         for (size_t col = 0; col < ScreenBufferDims.X; col++) {
@@ -252,11 +275,17 @@ COORD initCursorPos(const char* p_buffer, COORD ScreenBufferDims) {
 
 }
 
+// Function responsible for securely moving the cursor within console window.
+// It does not perform the given move if it puts the cursor outside of screen boundaries.
+// What's important, it also might move the cursor up or down a line if it was to exceed bounds otherwise.
+//
+// Params:
+// KEY_ARROW key                   - enum for move operations, such as arr. keys or END/HOME etc.
+// COORD* cursor                   - pointer to a cursor struct, to be modified if move is within bounds.
+// const COORD SCREEN_SIZE         - for bound checking
+// const uint32 MAX_ALLOWED_COLUMN - for bound checking, but when we want to move the cursor
+// to the end of text
 void move_cursor(KEY_ARROW key, COORD* cursor, const COORD SCREEN_SIZE, const uint32 MAX_ALLOWED_COLUMN) {
-
-    //TODO: 
-    //Currently cursor can go out of buffer/screen boundaries
-    //implement keeping it within in the future
 
     const int MIN_AVAILABLE_ROW = 0;
     const int MIN_AVAILABLE_COLUMN = 0;
@@ -280,7 +309,7 @@ void move_cursor(KEY_ARROW key, COORD* cursor, const COORD SCREEN_SIZE, const ui
         
         break;
     case ARR_RIGHT:
-        if (SCREEN_SIZE.X != MAX_ALLOWED_COLUMN) { //value mismatch - user just pressed an arrow key, stop cursor from going into whitespaces behind text
+        if (SCREEN_SIZE.X != MAX_ALLOWED_COLUMN) { // User just pressed an arrow key but there are no chars further to the right
             if (cursor->X <= MAX_ALLOWED_COLUMN && cursor->X != 0) {
                 cursor->X++;
             }

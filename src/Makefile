@@ -1,5 +1,5 @@
 CC = gcc
-SRC = main.c editor.c parse.c char_operations.c
+SRC = main.c editor.c parse.c char_operations.c text_structure.c
 IDIR = ../headers
 CFLAGS = -I$(IDIR)
 TARGET = winapi_test

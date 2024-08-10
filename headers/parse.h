@@ -8,12 +8,12 @@ typedef short int16;
 typedef long int int32;
 typedef unsigned long int uint32;
 
-const extern uint8 FILENAME_MAX_LEN;
-const extern uint8    INPUT_MAX_LEN;
-const extern char*        EXTENSION;
+extern const uint8 FILENAME_MAX_LEN;
+extern const uint8    INPUT_MAX_LEN;
+extern const char*        EXTENSION;
+extern const char*     INSTRUCTIONS;
+extern const uint32 TEXT_BUFFER_SIZE_BYTES;
 extern uint8       FOPEN_SAFE_ERROR;
-const extern char*     INSTRUCTIONS;
-const extern uint32 TEXT_BUFFER_SIZE_BYTES;
 
 typedef enum {
     ACTION_ERROR, ACTION_NEW_FILE, ACTION_OPEN_FILE, ACTION_LIST, ACTION_MOVE_DIR_UP, ACTION_MOVE_DIR_DOWN, ACTION_EXIT
