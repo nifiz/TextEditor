@@ -2,6 +2,8 @@
 #include "../headers/parse.h"
 #include "../headers/char_operations.h"
 #include "../headers/text_structure.h"
+#include "../headers/text_buffer.h"
+#include "../headers/display.h"
 #include <conio.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,30 +12,9 @@
 
 const char DEBUG_HEADER[] = " :: CTRL+X to eXit :: CTRL+S to Save";
 
-void clear_screen(void) {
-
-    CONSOLE_SCREEN_BUFFER_INFO csbi;
-    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-    DWORD count;
-    DWORD cellCount;
-    COORD homeCoords = {0, 0};
-
-    if (hConsole == INVALID_HANDLE_VALUE) return;
-
-    if (!GetConsoleScreenBufferInfo(hConsole, &csbi)) return;
-    cellCount = csbi.dwSize.X * csbi.dwSize.Y;
-
-    if (!FillConsoleOutputCharacter(hConsole, (TCHAR) ' ', cellCount, homeCoords, &count)) return;
-
-    if (!FillConsoleOutputAttribute(hConsole, csbi.wAttributes, cellCount, homeCoords, &count)) return;
-    SetConsoleCursorPosition(hConsole, homeCoords);
-
-    return;
-}
-
 void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
 
-    clear_screen();
+    clear_screen(' ');
 
     p_buffer = "TEST TEST";
 
@@ -45,41 +26,11 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
     COORD consoleWindowSize = {displayWidth, displayHeight};
     CHAR_INFO characterConsoleWindowBuffer[ consoleWindowSize.X * consoleWindowSize.Y];
 
+    const COORD homeCoords = {0, 0};
+
+    unsigned char logicBuffer[consoleWindowSize.X * consoleWindowSize.Y];
+
     uint8 fnameLength = strlen(fname);
-
-    const char FILLER = ' ';
-
-    // calloc() initializes the memory with 0's
-    uint16* pArr_lastCharPosition = (uint16*)calloc(consoleWindowSize.Y, sizeof(uint16));
-
-    // TEXT STRUCT INIT
-    textStructure editorTextStruct;
-    initTextStructureEmpty(&editorTextStruct, consoleWindowSize.Y);
-    // END OF TEXT STRUCT INIT
-
-
-    // INITALIZE THE SCREEEN
-    uint8 fillerCharsCount = displayWidth - 55 - fnameLength;
-    if (fillerCharsCount % 2 != 0) fillerCharsCount--;  //make it even
-
-    for (uint8 i = 0; i < displayWidth; i++) {
-        characterConsoleWindowBuffer[i].Char.AsciiChar = FILLER;
-        characterConsoleWindowBuffer[i].Attributes = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED | BACKGROUND_BLUE;
-    }
-
-    for (uint32 i = displayWidth; i < displayWidth*displayHeight; i++) {
-        characterConsoleWindowBuffer[i].Char.AsciiChar = FILLER;
-        characterConsoleWindowBuffer[i].Attributes = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED;
-    }
-
-    for (uint32 i = displayWidth*15; i < displayWidth*16; i++) {
-        characterConsoleWindowBuffer[i].Char.AsciiChar = FILLER;
-        characterConsoleWindowBuffer[i].Attributes = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED;
-    }
-    
-    // END OF SCREEN INITIALIZATION
-
-    // ==============================================================================================================
 
     // FIDDLING WITH WINDOWS.H STUFF
 
@@ -95,13 +46,6 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
 
     GetConsoleScreenBufferInfo(hStdout, &ScreenInfo); //load information about the screen
 
-    //TODO
-    //initialize the buffer with desired color values or sum
-
-    DWORD count;
-    DWORD cellCount;
-    COORD homeCoords = {0, 0};
-
     uint8 FRAME_TIME_MILISECONDS = 17;
 
     BOOL arrKeyWasPressed = FALSE;
@@ -112,8 +56,12 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
 
     // ==============================================================================================================
 
-    clear_screen();
-    WriteConsoleOutputA(hStdout, characterConsoleWindowBuffer, consoleWindowSize, homeCoords, &screenRect);
+    textBuffer editorTextStruct;
+
+    initTextStructureEmpty(&editorTextStruct, (uint32)displayHeight*displayWidth);
+
+    clear_screen(' ');
+    WriteConsoleOutputA(hStdout, characterConsoleWindowBuffer, consoleWindowSize, cursorPosition, &screenRect);
 
     unsigned char keyPressed;
 
@@ -126,37 +74,29 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
         switch (keyPressed) {
 
             case 8: //BACKSPACE
-                move_cursor(ARR_LEFT, &cursorPosition, consoleWindowSize, consoleWindowSize.X);
-                remove_character(characterConsoleWindowBuffer, consoleWindowSize, cursorPosition);
                 break;
             case 13: // ENTER key
-                move_character_newline(characterConsoleWindowBuffer, consoleWindowSize, cursorPosition, ' ');
-                move_cursor(LINE_BEGIN, &cursorPosition, consoleWindowSize, consoleWindowSize.X);
-                move_cursor(ARR_DOWN, &cursorPosition, consoleWindowSize, consoleWindowSize.X);
                 break;
             case 19: //CTRL+S - Save
                 break;
             case 24: //CTRL+X - Exit
                 running = FALSE;
-                clear_screen();
+                clear_screen(' ');
                 return;
                 break;
             case 224: //arrow key detected
                 arrKeyWasPressed = TRUE;
                 break;
-            
             // Default: a character key was pressed
             default:
                 
                 if (!arrKeyWasPressed) {
-                    
-                    insert_character(characterConsoleWindowBuffer, consoleWindowSize, cursorPosition, keyPressed);
-                    move_cursor(ARR_RIGHT, &cursorPosition, consoleWindowSize, consoleWindowSize.X);
+                    TBInsertCharacterAt(&editorTextStruct, cursorPosition, consoleWindowSize);
                 }
                 else { //ARR or END/HOME key was pressed!
                     uint32 maxAvailableColumn = last_character_in_string_CHARINFO(&characterConsoleWindowBuffer[cursorPosition.Y*consoleWindowSize.X], 
                                                                                   consoleWindowSize.X, 
-                                                                                  FILLER);
+                                                                                  ' ');
                     maxAvailableColumn = getLastCharInLine(&editorTextStruct, cursorPosition.Y);
                     move_cursor((KEY_ARROW)keyPressed, &cursorPosition, consoleWindowSize, maxAvailableColumn);
                     arrKeyWasPressed = FALSE;
@@ -166,10 +106,6 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
         WriteConsoleOutputA(hStdout, characterConsoleWindowBuffer, consoleWindowSize, homeCoords, &screenRect);
         SetConsoleCursorPosition(hStdout, cursorPosition);
     }
-
-    free(pArr_lastCharPosition);
-
-    freeTextStructure(&editorTextStruct);
 
     return;
 }

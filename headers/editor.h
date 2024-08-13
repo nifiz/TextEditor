@@ -13,7 +13,6 @@ typedef enum {
 } KEY_ARROW;
 
 void  run_editor                    (char* fname, char* const p_buffer, uint32 bufferSize);
-void  clear_screen                  (void);
 void  insert_character              (CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD cursorPosition, const char CHAR_TO_INSERT);
 void  remove_character              (CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD cursorPosition);
 void  move_character_newline        (CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD cursorPosition, const char CHAR_TO_INSERT);
