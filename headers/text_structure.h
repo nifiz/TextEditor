@@ -1,5 +1,5 @@
-#ifndef TEXT_STRUCTURE
-#define TEXT_STRUCTURE
+#ifndef TEXT_STRUCTURE_H
+#define TEXT_STRUCTURE_H
 
 #include "parse.h"
 #include <windows.h>

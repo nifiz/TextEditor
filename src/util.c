@@ -1,5 +1,8 @@
 #include "../headers/util.h"
 
+uint8 TAB_SIZE = 3;
+const uchar WHITESPACE = ' ';
+
 // TODO:
 // Out-of-bounds checking for these functions
 
@@ -26,4 +29,16 @@ COORD linearCoordToPlanar(const uint32 point, const COORD boundingRectangle) {
 
     return result;
 
+}
+
+uint8 w_get_display_width(void) {
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) return (uint8)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
+    else return 0;
+}
+
+uint8 w_get_display_height(void) {
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) return (uint8)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
+    else return 0;
 }

@@ -25,16 +25,19 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
 
     COORD consoleWindowSize = {displayWidth, displayHeight};
     CHAR_INFO characterConsoleWindowBuffer[ consoleWindowSize.X * consoleWindowSize.Y];
+    flushScreenBuffer(characterConsoleWindowBuffer, consoleWindowSize.X * consoleWindowSize.Y);
+
+    setDisplayColor(letterWhite | backgroundBlue, consoleWindowSize, characterConsoleWindowBuffer);
 
     const COORD homeCoords = {0, 0};
-
-    unsigned char logicBuffer[consoleWindowSize.X * consoleWindowSize.Y];
 
     uint8 fnameLength = strlen(fname);
 
     // FIDDLING WITH WINDOWS.H STUFF
 
     BOOL running = TRUE;
+    BOOL arrKeyWasPressed = FALSE;
+
     uint32 sizeOfReceivedBuffer = (uint32)strlen(p_buffer);
 
     HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
@@ -48,17 +51,14 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
 
     uint8 FRAME_TIME_MILISECONDS = 17;
 
-    BOOL arrKeyWasPressed = FALSE;
-
     SMALL_RECT screenRect = {0,0,displayWidth-1,displayHeight-1};
 
     // END OF WINDOWS.H SHANANIGANS
 
     // ==============================================================================================================
 
-    textBuffer editorTextStruct;
-
-    initTextStructureEmpty(&editorTextStruct, (uint32)displayHeight*displayWidth);
+    textBuffer editorTextBuffer;
+    initTextBufferEmpty(&editorTextBuffer, (uint32)(displayHeight*displayWidth));
 
     clear_screen(' ');
     WriteConsoleOutputA(hStdout, characterConsoleWindowBuffer, consoleWindowSize, cursorPosition, &screenRect);
@@ -69,43 +69,68 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
 
         Sleep(FRAME_TIME_MILISECONDS);
         
-        keyPressed = _getch();
+        keyPressed = (unsigned char)_getch();
 
-        switch (keyPressed) {
+        // switch (keyPressed) {
 
-            case 8: //BACKSPACE
+        //     case 8: //BACKSPACE
+        //         break;
+        //     case 13: // ENTER key
+        //         break;
+        //     case 19: //CTRL+S - Save
+        //         break;
+        //     case 24: //CTRL+X - Exit
+        //         running = FALSE;
+        //         clear_screen(' ');
+        //         return;
+        //         break;
+        //     case 224: //arrow key detected
+        //         arrKeyWasPressed = TRUE;
+        //         break;
+        //     // Default: a character key was pressed
+        //     default:
+                
+        //         if (!arrKeyWasPressed) {
+        //             TBInsertCharacterAt(&editorTextStruct, cursorPosition, consoleWindowSize, keyPressed);
+        //         }
+        //         else { //ARR or END/HOME key was pressed!
+        //             uint32 maxAvailableColumn = last_character_in_string_CHARINFO(&characterConsoleWindowBuffer[cursorPosition.Y*consoleWindowSize.X], 
+        //                                                                           consoleWindowSize.X, 
+        //                                                                           ' ');
+        //             maxAvailableColumn = getLastCharInLine(&editorTextStruct, cursorPosition.Y);
+        //             move_cursor((KEY_ARROW)keyPressed, &cursorPosition, consoleWindowSize, maxAvailableColumn);
+        //             arrKeyWasPressed = FALSE;
+        //         }
+        // }
+
+        switch(keyPressed) {
+            
+            case BACKSPACE:
+                TBRemoveCharacterWithInternalCursor(&editorTextBuffer);
                 break;
-            case 13: // ENTER key
-                break;
-            case 19: //CTRL+S - Save
-                break;
-            case 24: //CTRL+X - Exit
-                running = FALSE;
-                clear_screen(' ');
-                return;
-                break;
-            case 224: //arrow key detected
+            case ARROW_KEY:
+                // Implement this later on
                 arrKeyWasPressed = TRUE;
                 break;
-            // Default: a character key was pressed
             default:
-                
-                if (!arrKeyWasPressed) {
-                    TBInsertCharacterAt(&editorTextStruct, cursorPosition, consoleWindowSize);
+                if (arrKeyWasPressed == FALSE) {
+
+                    TBInsertCharacterWithInternalCursor(&editorTextBuffer, keyPressed);
                 }
-                else { //ARR or END/HOME key was pressed!
-                    uint32 maxAvailableColumn = last_character_in_string_CHARINFO(&characterConsoleWindowBuffer[cursorPosition.Y*consoleWindowSize.X], 
-                                                                                  consoleWindowSize.X, 
-                                                                                  ' ');
-                    maxAvailableColumn = getLastCharInLine(&editorTextStruct, cursorPosition.Y);
-                    move_cursor((KEY_ARROW)keyPressed, &cursorPosition, consoleWindowSize, maxAvailableColumn);
+                else {
+                    // Arrow key was pressed before
                     arrKeyWasPressed = FALSE;
+                    // Arrow behavior
                 }
+                
         }
 
+        updateScreenBuffer(characterConsoleWindowBuffer, &editorTextBuffer, consoleWindowSize, &cursorPosition);
         WriteConsoleOutputA(hStdout, characterConsoleWindowBuffer, consoleWindowSize, homeCoords, &screenRect);
         SetConsoleCursorPosition(hStdout, cursorPosition);
     }
+
+    freeTextBuffer(&editorTextBuffer);
 
     return;
 }
@@ -167,18 +192,6 @@ void move_character_newline(CHAR_INFO* p_buffer, const COORD sizeOfBuffer, COORD
         insert_character(p_buffer, sizeOfBuffer, cursorPosition, CHAR_TO_INSERT);
         cursorPosition.X += 1;
     }
-}
-
-uint8 w_get_display_width(void) {
-    CONSOLE_SCREEN_BUFFER_INFO csbi;
-    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) return (uint8)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
-    else return 0;
-}
-
-uint8 w_get_display_height(void) {
-    CONSOLE_SCREEN_BUFFER_INFO csbi;
-    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) return (uint8)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
-    else return 0;
 }
 
 // TODO:

@@ -1,7 +1,6 @@
 #ifndef OPERATION_H
 #define OPERATION_H
 
-#include <windows.h>
 #include "util.h"
 
 typedef struct {
