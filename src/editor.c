@@ -16,8 +16,6 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
 
     clear_screen(' ');
 
-    p_buffer = "TEST TEST";
-
     //initalize stuff
 
     uint8 displayWidth = w_get_display_width();
@@ -120,7 +118,29 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
                 else {
                     // Arrow key was pressed before
                     arrKeyWasPressed = FALSE;
-                    // Arrow behavior
+                    // Arrow and Home/End key behavior
+                    switch (keyPressed) {
+                        // ARR_UP= 72, ARR_DOWN = 80, ARR_LEFT = 75, ARR_RIGHT = 77, LINE_BEGIN = 71, LINE_END
+                        case ARR_UP:
+                            TBMoveCursorUp(&editorTextBuffer, consoleWindowSize, cursorPosition);
+                            break;
+                        case ARR_DOWN:
+                            TBMoveCursorDown(&editorTextBuffer, consoleWindowSize, cursorPosition);
+                            break;
+                        case ARR_LEFT:
+                            TBMoveCursorBack(&editorTextBuffer);
+                            break;
+                        case ARR_RIGHT:
+                            TBMoveCursorFront(&editorTextBuffer);
+                            break;
+                        case LINE_BEGIN:
+                            break;
+                        case LINE_END:
+                            break;
+                        default:
+                            // Something else happened here xd
+                            break;
+                    }
                 }
                 
         }
@@ -131,6 +151,8 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
     }
 
     freeTextBuffer(&editorTextBuffer);
+
+    // We're wrapping everything up
 
     return;
 }

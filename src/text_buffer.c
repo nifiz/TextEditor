@@ -47,10 +47,6 @@ uint8 TBInsertCharacterWithInternalCursor(textBuffer* TBuffer, const uchar chara
 
     uint32 linearPosition = TBuffer->internalCursorPosition;
 
-    // DEBUG VARIABLE
-    uchar KURWA = *(TBuffer->p_logicUCharBuffer + linearPosition + 1);
-    // END OF DEBUG VARIABLE
-
     memmove((TBuffer->p_logicUCharBuffer + linearPosition + 1),(TBuffer->p_logicUCharBuffer + linearPosition), TBuffer->amtOfCharacters - linearPosition + 1);
 
     *(TBuffer->p_logicUCharBuffer + linearPosition) = character;
@@ -93,7 +89,7 @@ uint8 TBRemoveCharacter(textBuffer* TBuffer, const COORD cursorPosition, const C
 // Securely advances the 1D cursor or returns 1 on failure
 uint8 TBMoveCursorFront(textBuffer* TBuffer) {
 
-    if (TBuffer->internalCursorPosition < ULONG_MAX) {
+    if (TBuffer->internalCursorPosition < ULONG_MAX && TBuffer->internalCursorPosition < TBuffer->amtOfCharacters) {
         TBuffer->internalCursorPosition++;
         return 0;
     }
@@ -115,4 +111,66 @@ uint8 TBMoveCursorBack(textBuffer* TBuffer) {
         return 1;
     }
 
+}
+
+uint8 TBMoveCursorUp(textBuffer* TBuffer, const COORD displayRectangle, const COORD cursorPosition) {
+    if (cursorPosition.Y == 0) return 1;
+    COORD cursorPositionTarget = {cursorPosition.X, cursorPosition.Y - 1};
+    TBuffer->internalCursorPosition = findLogicIndex(TBuffer, displayRectangle, cursorPositionTarget);
+    return 0;
+}
+uint8 TBMoveCursorDown(textBuffer* TBuffer, const COORD displayRectangle, const COORD cursorPosition) {
+    if (cursorPosition.Y == displayRectangle.Y) return 1;
+    COORD cursorPositionTarget = {cursorPosition.X, cursorPosition.Y + 1};
+
+    TBuffer->internalCursorPosition = findLogicIndex(TBuffer, displayRectangle, cursorPositionTarget);
+    return 0;
+}
+
+static uint32 findLogicIndex(const textBuffer* TBuffer, const COORD displayRectangle, const COORD cursorPosition) {
+    
+    uint32 idx = 0;
+    uint32 logicIdx = 0;
+    BOOL ETX_FOUND = FALSE;
+    BOOL foundTargetDisplayLocation = FALSE;
+    uchar pickup;
+    COORD cursor = {0,0};
+    uint32 targetLocationOnScreenLinear = planarCoordToLinear(cursorPosition, displayRectangle);
+
+    for (; (idx < displayRectangle.X*displayRectangle.Y && ETX_FOUND == FALSE); idx++, logicIdx++) {
+        
+        pickup = *(TBuffer->p_logicUCharBuffer + logicIdx);
+        if (idx == targetLocationOnScreenLinear) return logicIdx;
+        // if we reached the end of logic buffer but still didnt find the position
+        if (logicIdx == TBuffer->amtOfCharacters - 1) return ++logicIdx;
+        else {
+            if (idx > targetLocationOnScreenLinear) return --logicIdx;
+        }
+
+        switch (pickup){
+            case 0:
+                // null character - '\n'
+                ETX_FOUND = TRUE;
+            break;
+            case 1:
+                // placeholder character - let's display it as a whitespace
+            break;
+            case 9:
+                idx += (TAB_SIZE - 1);
+            break;
+            case 13:
+                // vertical feed - 13, what to do with \n?
+                cursor = linearCoordToPlanar(idx, displayRectangle);
+                uint8 whitespaces = 0;
+                for (; whitespaces < displayRectangle.X - cursor.X; whitespaces++) {
+                    
+                }
+                idx += (whitespaces - 1);
+            break;
+            default:
+                // Regular character encountered - check for sure
+            break;
+
+        }
+    }
 }

@@ -34,33 +34,36 @@ uint8 setDisplayColor(const Color color, const COORD displayRectangle, CHAR_INFO
     return 0;
 }
 
-uint8 updateScreenBuffer(CHAR_INFO* pDisplayCharBuffer, const textBuffer* pLogicCharBuffer, const COORD displayRect, COORD* pCursor) {
+uint8 updateScreenBuffer(CHAR_INFO* pDisplayCharBuffer, const textBuffer* pTBuffer, const COORD displayRect, COORD* pCursor) {
     
     uint32 linearDisplayCharSize = displayRect.X * displayRect.Y;
 
     BOOL ETX_FOUND = FALSE;
-
+    BOOL CursorFound = FALSE;
+    uint32 displayCursorPosition = 0;
     COORD cursor = {0,0};
 
-    if (pDisplayCharBuffer == NULL || pLogicCharBuffer == NULL) return 1;
+
+    if (pDisplayCharBuffer == NULL || pTBuffer == NULL) return 1;
 
     uchar pickup;
     uint32 logicIdx = 0;
+    uint32 idx = 0;
 
-    for (uint32 idx = 0; (idx < linearDisplayCharSize && ETX_FOUND == FALSE); idx++, logicIdx++) {
+    for (; (idx < linearDisplayCharSize && ETX_FOUND == FALSE); idx++, logicIdx++) {
         
-        pickup = *(pLogicCharBuffer->p_logicUCharBuffer + logicIdx);
+        pickup = *(pTBuffer->p_logicUCharBuffer + logicIdx);
 
         switch (pickup){
             case 0:
                 // null character - '\n'
                 (pDisplayCharBuffer + idx)->Char.AsciiChar = WHITESPACE;
                 ETX_FOUND = TRUE;
-                break;
+            break;
             case 1:
                 // placeholder character - let's display it as a whitespace
                 (pDisplayCharBuffer + idx)->Char.AsciiChar = WHITESPACE;
-                break;
+            break;
             case 9:
                 // tab encountered - enter a few whitespaces
 
@@ -70,7 +73,7 @@ uint8 updateScreenBuffer(CHAR_INFO* pDisplayCharBuffer, const textBuffer* pLogic
                     (pDisplayCharBuffer + idx + whitespaces)->Char.AsciiChar = WHITESPACE;
                 }
                 idx += (TAB_SIZE - 1);
-                break;
+            break;
             case 13:
                 // vertical feed - 13, what to do with \n?
                 cursor = linearCoordToPlanar(idx, displayRect);
@@ -79,17 +82,26 @@ uint8 updateScreenBuffer(CHAR_INFO* pDisplayCharBuffer, const textBuffer* pLogic
                     (pDisplayCharBuffer + idx + whitespaces)->Char.AsciiChar = WHITESPACE;
                 }
                 idx += (whitespaces - 1);
-                break;
+            break;
             default:
                 // Regular character encountered - check for sure!
                 if (pickup >= 32 && pickup <= 126) {
                     (pDisplayCharBuffer+idx)->Char.AsciiChar = pickup;
                 }
 
-                break;
+            break;
+
         }
 
+        if (CursorFound == FALSE) displayCursorPosition = idx;
+        // -1 because logicIdx is 0 - indexed while ICP is 1 indexed
+        if (logicIdx == pTBuffer->internalCursorPosition - 1) CursorFound = TRUE;
     }
+
+    // Cursor management
+    // The +1 works nicely probably because indexing blah blah blah
+    // On the other hand, indexing should always start with 1 xd
+    *pCursor = linearCoordToPlanar(displayCursorPosition+1, displayRect);
 
     return 0; 
 }
