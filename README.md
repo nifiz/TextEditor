@@ -1,8 +1,7 @@
 <H3>Console text editor written in pure C </H3>
 This is my first big solo project. I wanted to make something useful, and to actually
-practice maintaining and creating a project spanning multiple source and header files, along with
-a Makefile. After all, this is what creating software is about at the end of the day - apart from 
-int's, data structures, algorithms and debugging.
+practice creating and maintaining a project spanning multiple source and header files, along with
+a Makefile.
 
 <H5>Working features so far: </H5>
 
