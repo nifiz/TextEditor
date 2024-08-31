@@ -24,6 +24,7 @@
 #define BACKGROUND_DARK_RED   (BACKGROUND_RED)
 
 typedef enum {
+    backgroundBlack = 0,
     letterWhite = LETTER_WHITE,
     letterBlue = LETTER_BLUE,
     letterRed = LETTER_RED,
@@ -31,16 +32,20 @@ typedef enum {
     backgroundWhite = BACKGROUND_WHITE,
     backgroundGrey = BACKGROUND_DARK_WHITE,
     backgroundBlue = (BACKGROUND_BLUE | BACKGROUND_INTENSITY),
+    backgroundDarkBlue = (BACKGROUND_BLUE),
     backgroundRed = (BACKGROUND_RED | BACKGROUND_INTENSITY),
-    backgroundGreen = (BACKGROUND_GREEN | BACKGROUND_INTENSITY),
-
+    backgroundGreen = (BACKGROUND_GREEN | BACKGROUND_INTENSITY)
 } Color;
 
 // Flushes the screen with a given character
-void clear_screen(const char fillerChar);
-uint8 setDisplayColor(const Color color, const COORD displayRectangle, CHAR_INFO* pBuffer);
-uint8 updateScreenBuffer(CHAR_INFO* pDisplayCharBuffer, const textBuffer* pLogicCharBuffer, const COORD displayRect, COORD* pCursor);
-void flushScreenBuffer(CHAR_INFO* pScreenBuffer, const uint32 sizeOfScreenBuffer);
+void clear_screen           (const char fillerChar);
+void flushScreenBuffer      (CHAR_INFO* pScreenBuffer, const uint32 sizeOfScreenBuffer);
+uint8 setDisplayColor       (const Color color, const COORD displayRectangle, CHAR_INFO* pBuffer);
 
+uint8 updateScreenBuffer    (CHAR_INFO* pDisplayCharBuffer, 
+                            const textBuffer* pTBuffer, 
+                            const SMALL_RECT displayRect, 
+                            const SMALL_RECT drawingRect, 
+                            COORD* pCursor);
 
 #endif

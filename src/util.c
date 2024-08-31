@@ -42,3 +42,11 @@ uint8 w_get_display_height(void) {
     if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) return (uint8)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
     else return 0;
 }
+
+COORD smallRectToCoord(const SMALL_RECT rect) {
+    return (COORD){(rect.Right-rect.Left),(rect.Bottom-rect.Top)};
+}
+
+uint32 smallRectArea(const SMALL_RECT rect) {
+    return (rect.Right-rect.Left)*(rect.Bottom-rect.Top);
+}

@@ -15,9 +15,22 @@ uint8 initTextBufferEmpty(textBuffer* TBuffer, const uint32 bufferSize) {
     }
 }
 
+uint8 initTextBufferFromString(textBuffer* TBuffer, const uint32 bufferSize, const char* restrict source, uint32 sourceSize) {
+    
+    TBuffer->logicBufferSize = bufferSize;
+    TBuffer->amtOfCharacters = sourceSize + 1; // Accounting for NULL char
+
+    TBuffer->internalCursorPosition = sourceSize - 1;
+    TBuffer->p_logicUCharBuffer = calloc(bufferSize, sizeof(unsigned char));
+    *(TBuffer->p_logicUCharBuffer + sourceSize) = (uchar)0;
+
+    if (memcpy(TBuffer->p_logicUCharBuffer, source, sourceSize) != TBuffer->p_logicUCharBuffer) return 1;
+    else return 0;
+
+}
+
 uint8 freeTextBuffer(textBuffer* TBuffer) {
-    void* memToFree = (void*)TBuffer->p_logicUCharBuffer;
-    free(memToFree);
+    free(TBuffer->p_logicUCharBuffer);
     TBuffer->p_logicUCharBuffer = NULL;
     return 0;
 }

@@ -16,6 +16,7 @@ typedef struct {
 
 // Constructor and Destructor of sorts
 uint8 initTextBufferEmpty                   (textBuffer* TBuffer, const uint32 bufferSize);
+uint8 initTextBufferFromString              (textBuffer* TBuffer, const uint32 bufferSize, const char* source, uint32 sourceSize);
 uint8 freeTextBuffer                        (textBuffer* TBuffer);
 
 // Functions

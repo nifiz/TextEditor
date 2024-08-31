@@ -43,9 +43,11 @@ typedef enum {
     ARR_UP= 72, ARR_DOWN = 80, ARR_LEFT = 75, ARR_RIGHT = 77, LINE_BEGIN = 71, LINE_END = 79
 } KEY_ARROW;
 
-uint32 planarCoordToLinear  (const COORD point, const COORD boundingRectangle);
-COORD linearCoordToPlanar   (const uint32 point, const COORD boundingRectangle);
-uint8 w_get_display_width   (void);
-uint8 w_get_display_height  (void);
+uint32 planarCoordToLinear      (const COORD point, const COORD boundingRectangle);
+COORD linearCoordToPlanar       (const uint32 point, const COORD boundingRectangle);
+uint8 w_get_display_width       (void);
+uint8 w_get_display_height      (void);
+COORD smallRectToCoord          (const SMALL_RECT rect);
+uint32 smallRectArea            (const SMALL_RECT rect);
 
 #endif

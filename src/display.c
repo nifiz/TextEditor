@@ -34,21 +34,21 @@ uint8 setDisplayColor(const Color color, const COORD displayRectangle, CHAR_INFO
     return 0;
 }
 
-uint8 updateScreenBuffer(CHAR_INFO* pDisplayCharBuffer, const textBuffer* pTBuffer, const COORD displayRect, COORD* pCursor) {
+uint8 updateScreenBuffer(CHAR_INFO* pDisplayCharBuffer, const textBuffer* pTBuffer, const SMALL_RECT displayRect, const SMALL_RECT drawingRect, COORD* pCursor) {
     
-    uint32 linearDisplayCharSize = displayRect.X * displayRect.Y;
+    uint32 linearDisplayCharSize = smallRectArea(displayRect);
 
     BOOL ETX_FOUND = FALSE;
     BOOL CursorFound = FALSE;
     uint32 displayCursorPosition = 0;
     COORD cursor = {0,0};
 
-
     if (pDisplayCharBuffer == NULL || pTBuffer == NULL) return 1;
 
     uchar pickup;
     uint32 logicIdx = 0;
-    uint32 idx = 0;
+    //uint32 idx = drawingRect.X;
+    uint32 idx = planarCoordToLinear((COORD){drawingRect.Left, drawingRect.Top}, (COORD)(smallRectToCoord(displayRect)));
 
     for (; (idx < linearDisplayCharSize && ETX_FOUND == FALSE); idx++, logicIdx++) {
         
@@ -76,9 +76,9 @@ uint8 updateScreenBuffer(CHAR_INFO* pDisplayCharBuffer, const textBuffer* pTBuff
             break;
             case 13:
                 // vertical feed - 13, what to do with \n?
-                cursor = linearCoordToPlanar(idx, displayRect);
+                cursor = linearCoordToPlanar(idx, smallRectToCoord(displayRect));
                 uint8 whitespaces = 0;
-                for (; whitespaces < displayRect.X - cursor.X; whitespaces++) {
+                for (; whitespaces < (displayRect.Right-displayRect.Left) - cursor.X; whitespaces++) {
                     (pDisplayCharBuffer + idx + whitespaces)->Char.AsciiChar = WHITESPACE;
                 }
                 idx += (whitespaces - 1);
@@ -101,7 +101,7 @@ uint8 updateScreenBuffer(CHAR_INFO* pDisplayCharBuffer, const textBuffer* pTBuff
     // Cursor management
     // The +1 works nicely probably because indexing blah blah blah
     // On the other hand, indexing should always start with 1 xd
-    *pCursor = linearCoordToPlanar(displayCursorPosition+1, displayRect);
+    *pCursor = linearCoordToPlanar(displayCursorPosition+1, smallRectToCoord(displayRect));
 
     return 0; 
 }

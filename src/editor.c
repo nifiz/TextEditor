@@ -25,7 +25,7 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
     CHAR_INFO characterConsoleWindowBuffer[ consoleWindowSize.X * consoleWindowSize.Y];
     flushScreenBuffer(characterConsoleWindowBuffer, consoleWindowSize.X * consoleWindowSize.Y);
 
-    setDisplayColor(letterWhite | backgroundBlue, consoleWindowSize, characterConsoleWindowBuffer);
+    setDisplayColor(letterWhite | backgroundDarkBlue, consoleWindowSize, characterConsoleWindowBuffer);
 
     const COORD homeCoords = {0, 0};
 
@@ -68,38 +68,6 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
         Sleep(FRAME_TIME_MILISECONDS);
         
         keyPressed = (unsigned char)_getch();
-
-        // switch (keyPressed) {
-
-        //     case 8: //BACKSPACE
-        //         break;
-        //     case 13: // ENTER key
-        //         break;
-        //     case 19: //CTRL+S - Save
-        //         break;
-        //     case 24: //CTRL+X - Exit
-        //         running = FALSE;
-        //         clear_screen(' ');
-        //         return;
-        //         break;
-        //     case 224: //arrow key detected
-        //         arrKeyWasPressed = TRUE;
-        //         break;
-        //     // Default: a character key was pressed
-        //     default:
-                
-        //         if (!arrKeyWasPressed) {
-        //             TBInsertCharacterAt(&editorTextStruct, cursorPosition, consoleWindowSize, keyPressed);
-        //         }
-        //         else { //ARR or END/HOME key was pressed!
-        //             uint32 maxAvailableColumn = last_character_in_string_CHARINFO(&characterConsoleWindowBuffer[cursorPosition.Y*consoleWindowSize.X], 
-        //                                                                           consoleWindowSize.X, 
-        //                                                                           ' ');
-        //             maxAvailableColumn = getLastCharInLine(&editorTextStruct, cursorPosition.Y);
-        //             move_cursor((KEY_ARROW)keyPressed, &cursorPosition, consoleWindowSize, maxAvailableColumn);
-        //             arrKeyWasPressed = FALSE;
-        //         }
-        // }
 
         switch(keyPressed) {
             
@@ -145,7 +113,11 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
                 
         }
 
-        updateScreenBuffer(characterConsoleWindowBuffer, &editorTextBuffer, consoleWindowSize, &cursorPosition);
+        updateScreenBuffer(characterConsoleWindowBuffer, 
+                          &editorTextBuffer, 
+                          screenRect, 
+                          screenRect, 
+                          &cursorPosition);
         WriteConsoleOutputA(hStdout, characterConsoleWindowBuffer, consoleWindowSize, homeCoords, &screenRect);
         SetConsoleCursorPosition(hStdout, cursorPosition);
     }
