@@ -11,7 +11,7 @@ const uint8 FILENAME_MAX_LEN = 64;
 const uint32 TEXT_BUFFER_SIZE_BYTES = 500000;
 const char* EXTENSION = ".txt";
 uint8 FOPEN_SAFE_ERROR = 0;
-const char* INSTRUCTIONS = "N - NEW FILE, O - OPEN FILE, LS - LIST FILES, E - EXIT";
+const char* INSTRUCTIONS = "N - NEW FILE, O - OPEN FILE, LS - LIST FILES, E - EXIT\r";
 
 ActionType resolve(const char* input) {
     

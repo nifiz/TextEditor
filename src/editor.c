@@ -67,7 +67,9 @@ void run_editor(char* fname, char* p_buffer, uint32 bufferSize) {
 
         Sleep(FRAME_TIME_MILISECONDS);
         
-        keyPressed = (unsigned char)_getch();
+        //keyPressed = (unsigned char)_getch();
+
+        keyPressed = readConsoleCharacter();
 
         switch(keyPressed) {
             

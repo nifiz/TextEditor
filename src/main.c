@@ -22,16 +22,16 @@ int main(void) {
     SMALL_RECT screenRect = {0,0,screen.X-1,screen.Y-1};
     SMALL_RECT editRect = {5,5,screen.X-1, screen.Y-1};
     setDisplayColor(backgroundBlack | letterWhite, screen, screenBuff);
-    updateScreenBuffer(screenBuff, &headerTBuff, screenRect, editRect, &cursor);
+    updateScreenBuffer(screenBuff, &headerTBuff, screenRect, screenRect, &cursor);
     HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleCursorPosition(hStdout, cursor);
     WriteConsoleOutputA(hStdout, screenBuff, screen, (COORD){0,0}, &screenRect);
-    while (1) {
+    while(1) {
 
-
-        gets_s(input, INPUT_MAX_LEN);
+        readConsoleString(input, INPUT_MAX_LEN, TRUE);
         ActionType userAction = resolve(input);
-
         action_manager(userAction, input);
+        SetConsoleCursorPosition(hStdout, cursor);
         clear_screen(' ');
     }
 

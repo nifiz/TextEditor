@@ -7,12 +7,17 @@ uint8 initTextBufferEmpty(textBuffer* TBuffer, const uint32 bufferSize) {
     TBuffer->internalCursorPosition = 0;
     TBuffer->p_logicUCharBuffer = calloc(bufferSize, sizeof(unsigned char));
 
+    if (TBuffer->p_logicUCharBuffer == NULL) return 1; /* Allocation error */
+
     // ETX - End of text sign
     *(TBuffer->p_logicUCharBuffer) = (uchar)0;
 
     for (uint32 idx = 1; idx < bufferSize; idx++) {
         *(TBuffer->p_logicUCharBuffer + idx) = PLACEHOLDER;
     }
+
+    return 0;
+
 }
 
 uint8 initTextBufferFromString(textBuffer* TBuffer, const uint32 bufferSize, const char* restrict source, uint32 sourceSize) {
@@ -20,7 +25,8 @@ uint8 initTextBufferFromString(textBuffer* TBuffer, const uint32 bufferSize, con
     TBuffer->logicBufferSize = bufferSize;
     TBuffer->amtOfCharacters = sourceSize + 1; // Accounting for NULL char
 
-    TBuffer->internalCursorPosition = sourceSize - 1;
+    // TBuffer->internalCursorPosition = sourceSize - 1;
+    TBuffer->internalCursorPosition = sourceSize; //Fixed it?
     TBuffer->p_logicUCharBuffer = calloc(bufferSize, sizeof(unsigned char));
     *(TBuffer->p_logicUCharBuffer + sourceSize) = (uchar)0;
 
@@ -97,6 +103,8 @@ uint8 TBRemoveCharacter(textBuffer* TBuffer, const COORD cursorPosition, const C
     *(TBuffer->p_logicUCharBuffer + (TBuffer->amtOfCharacters-1)) = PLACEHOLDER;
 
     TBuffer->amtOfCharacters--;
+
+    return 0;
 }
 
 // Securely advances the 1D cursor or returns 1 on failure
@@ -142,10 +150,9 @@ uint8 TBMoveCursorDown(textBuffer* TBuffer, const COORD displayRectangle, const 
 
 static uint32 findLogicIndex(const textBuffer* TBuffer, const COORD displayRectangle, const COORD cursorPosition) {
     
-    uint32 idx = 0;
+    int32 idx = 0;
     uint32 logicIdx = 0;
     BOOL ETX_FOUND = FALSE;
-    BOOL foundTargetDisplayLocation = FALSE;
     uchar pickup;
     COORD cursor = {0,0};
     uint32 targetLocationOnScreenLinear = planarCoordToLinear(cursorPosition, displayRectangle);
@@ -186,4 +193,6 @@ static uint32 findLogicIndex(const textBuffer* TBuffer, const COORD displayRecta
 
         }
     }
+
+    return 0;
 }

@@ -38,8 +38,8 @@ typedef enum {
 } Color;
 
 // Flushes the screen with a given character
-void clear_screen           (const char fillerChar);
-void flushScreenBuffer      (CHAR_INFO* pScreenBuffer, const uint32 sizeOfScreenBuffer);
+void  clear_screen          (const char fillerChar);
+void  flushScreenBuffer     (CHAR_INFO* pScreenBuffer, const uint32 sizeOfScreenBuffer);
 uint8 setDisplayColor       (const Color color, const COORD displayRectangle, CHAR_INFO* pBuffer);
 
 uint8 updateScreenBuffer    (CHAR_INFO* pDisplayCharBuffer, 
@@ -47,5 +47,8 @@ uint8 updateScreenBuffer    (CHAR_INFO* pDisplayCharBuffer,
                             const SMALL_RECT displayRect, 
                             const SMALL_RECT drawingRect, 
                             COORD* pCursor);
+
+uchar readConsoleCharacter  (void);
+uint8 readConsoleString     (uchar* pBuffer, const uint16 buffSize, const BOOL echoInput);
 
 #endif

@@ -23,9 +23,9 @@ COORD linearCoordToPlanar(const uint32 point, const COORD boundingRectangle) {
     
     COORD result;
 
-    result.Y = (short)(point / boundingRectangle.X);
+    result.Y = (short)(point / (boundingRectangle.X + 1));
 
-    result.X = point - result.Y * boundingRectangle.X;
+    result.X = point - result.Y * (boundingRectangle.X + 1);
 
     return result;
 
@@ -48,5 +48,6 @@ COORD smallRectToCoord(const SMALL_RECT rect) {
 }
 
 uint32 smallRectArea(const SMALL_RECT rect) {
+    // Fix in the future xd
     return (rect.Right-rect.Left)*(rect.Bottom-rect.Top);
 }

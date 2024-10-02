@@ -56,7 +56,7 @@ uint8 updateScreenBuffer(CHAR_INFO* pDisplayCharBuffer, const textBuffer* pTBuff
 
         switch (pickup){
             case 0:
-                // null character - '\n'
+                // null character - '\0'
                 (pDisplayCharBuffer + idx)->Char.AsciiChar = WHITESPACE;
                 ETX_FOUND = TRUE;
             break;
@@ -78,7 +78,7 @@ uint8 updateScreenBuffer(CHAR_INFO* pDisplayCharBuffer, const textBuffer* pTBuff
                 // vertical feed - 13, what to do with \n?
                 cursor = linearCoordToPlanar(idx, smallRectToCoord(displayRect));
                 uint8 whitespaces = 0;
-                for (; whitespaces < (displayRect.Right-displayRect.Left) - cursor.X; whitespaces++) {
+                for (; whitespaces <= (displayRect.Right-displayRect.Left) - cursor.X; whitespaces++) {
                     (pDisplayCharBuffer + idx + whitespaces)->Char.AsciiChar = WHITESPACE;
                 }
                 idx += (whitespaces - 1);
@@ -95,13 +95,13 @@ uint8 updateScreenBuffer(CHAR_INFO* pDisplayCharBuffer, const textBuffer* pTBuff
 
         if (CursorFound == FALSE) displayCursorPosition = idx;
         // -1 because logicIdx is 0 - indexed while ICP is 1 indexed
-        if (logicIdx == pTBuffer->internalCursorPosition - 1) CursorFound = TRUE;
+        if (logicIdx == pTBuffer->internalCursorPosition -1) CursorFound = TRUE;
     }
 
-    // Cursor management
-    // The +1 works nicely probably because indexing blah blah blah
-    // On the other hand, indexing should always start with 1 xd
-    *pCursor = linearCoordToPlanar(displayCursorPosition+1, smallRectToCoord(displayRect));
+    /* Align cursor to printed text. */
+    *pCursor = linearCoordToPlanar(displayCursorPosition + 1, smallRectToCoord(displayRect));
+    /* ICP points to 0 - cursor should be on (0, 0). */
+    if (!pTBuffer->internalCursorPosition) pCursor->X = 0;
 
     return 0; 
 }
@@ -114,4 +114,65 @@ void flushScreenBuffer(CHAR_INFO* pScreenBuffer, const uint32 sizeOfScreenBuffer
         (pScreenBuffer + idx)->Attributes = 0x0;
     }
     return;
+}
+
+uchar readConsoleCharacter(void) {
+
+    HANDLE hConsoleInput = GetStdHandle(STD_INPUT_HANDLE);
+    if (hConsoleInput == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+
+    DWORD mode;
+    // Get the current input mode
+    if (!GetConsoleMode(hConsoleInput, &mode)) {
+        return 0;
+    }
+
+    // Disable line input and echo input
+    mode &= ~ENABLE_LINE_INPUT;
+    mode &= ~ENABLE_ECHO_INPUT; // Optional: Disable echoing
+
+    if (!SetConsoleMode(hConsoleInput, mode)) {
+        return 0;
+    }
+
+    char ch;
+    DWORD charsRead;
+
+    if (!ReadConsole(hConsoleInput, &ch, 1, &charsRead, NULL)) {
+        return 0;
+    }
+
+    // Restore the original mode (if needed)
+    SetConsoleMode(hConsoleInput, mode | ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+
+    return (uchar)ch;
+}
+
+uint8 readConsoleString(uchar* pBuffer, const uint16 buffSize, const BOOL echoInput) {
+
+    HANDLE hConsoleInput = GetStdHandle(STD_INPUT_HANDLE);
+    if (hConsoleInput == INVALID_HANDLE_VALUE) {
+        return 1;
+    }
+    DWORD consoleMode; 
+    GetConsoleMode(hConsoleInput, &consoleMode);
+
+    if (!echoInput) {
+        consoleMode &= ~ENABLE_ECHO_INPUT;
+        SetConsoleMode(hConsoleInput, consoleMode);
+    }
+
+    DWORD charsRead;
+
+    if (!ReadConsole(hConsoleInput, pBuffer, buffSize, &charsRead, NULL)) {
+        return 1;
+    }
+
+    if (!echoInput) {
+        SetConsoleMode(hConsoleInput, consoleMode | ENABLE_ECHO_INPUT);
+    }
+
+    return (uint8)charsRead;
 }
